@@ -61,18 +61,21 @@ fs.mkdirSync(outDir, { recursive: true });
 })();
 
 function buildHTML(messages, platform, leftName, rightName) {
-  const rows = messages
+      const rows = messages
     .map((m) => {
-      const isMe = m.sender === rightName;
-      const side = isMe ? 'right' : 'left';
-      const avatar = isMe ? rightName : leftName;
+      // 兼容 side/content 和 sender/text 两套字段
+      const side = m.side ?? (m.sender === RIGHT_NAME ? 'right' : 'left');
+      const text = m.content ?? m.text ?? '';
+      const isMe = side === 'right' || side === 'me';
+      const avatar = isMe ? RIGHT_NAME : LEFT_NAME;
       return `
         <div class="row ${side}">
           <div class="avatar">${escapeHtml(avatar)}</div>
-          <div class="bubble msg">${escapeHtml(m.text)}</div>
+          <div class="bubble msg">${escapeHtml(text)}</div>
         </div>`;
     })
     .join('\n');
+
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
