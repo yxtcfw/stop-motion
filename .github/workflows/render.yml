@@ -1,29 +1,66 @@
 name: WeChat Render
+
 on:
   workflow_dispatch:
     inputs:
-      json: { description: "Base64 对话JSON", required: true, type: string }
-      dark: { description: "深色 true/false", required: false, type: string, default: "false" }
-      title: { description: "标题", required: false, type: string, default: "微信" }
-      left_avatar: { description: "左头像", required: false, type: string, default: "A" }
-      right_avatar: { description: "右头像", required: false, type: string, default: "我" }
+      data_json:
+        description: "data.json 内容（JSON 字符串）"
+        required: true
+        type: string
+      platform:
+        description: "平台：微信/QQ/钉钉"
+        required: false
+        default: "微信"
+        type: string
+      left_name:
+        description: "左侧头像名"
+        required: false
+        default: "A"
+        type: string
+      right_name:
+        description: "右侧头像名"
+        required: false
+        default: "我"
+        type: string
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: npm install
-      - name: Render
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-cjk fonts-wqy-microhei fonts-wqy-zenhei fontconfig
+          fc-cache -fv
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Puppeteer
+        run: npm install puppeteer
+
+      - name: Render video
         env:
-          INPUT_JSON: ${{ inputs.json }}
-          DARK: ${{ inputs.dark }}
-          TITLE: ${{ inputs.title }}
-          LEFT_AVATAR: ${{ inputs.left_avatar }}
-          RIGHT_AVATAR: ${{ inputs.right_avatar }}
-        run: npm run render
-      - uses: actions/upload-artifact@v4
-        with: { name: wechat-video, path: output/output.mp4, retention-days: 1 }
+          DATA_JSON: ${{ github.event.inputs.data_json || '' }}
+          PLATFORM: ${{ github.event.inputs.platform || '' }}
+          LEFT_NAME: ${{ github.event.inputs.left_name || '' }}
+          RIGHT_NAME: ${{ github.event.inputs.right_name || '' }}
+        run: node render.cjs
+
+      - name: Upload video
+        uses: actions/upload-artifact@v4
+        with:
+          name: wechat-video
+          path: output/output.mp4
+          retention-days: 30

@@ -1,50 +1,98 @@
-const puppeteer = require('puppeteer');
-const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const puppeteer = require('puppeteer');
+const { execSync } = require('child_process');
 
-const FPS = 2;
-const chat = JSON.parse(Buffer.from(process.env.INPUT_JSON, 'base64').toString());
-const dark = process.env.DARK === 'true';
-const title = process.env.TITLE || '微信';
-const leftAvatar = process.env.LEFT_AVATAR || 'A';
-const rightAvatar = process.env.RIGHT_AVATAR || '我';
+const DATA_JSON  = process.env.DATA_JSON || fs.readFileSync('data.json', 'utf8');
+const PLATFORM   = process.env.PLATFORM  || '微信';
+const LEFT_NAME  = process.env.LEFT_NAME || 'A';
+const RIGHT_NAME = process.env.RIGHT_NAME|| '我';
 
-const outDir = path.join(__dirname, '..', 'output');
-const framesDir = path.join(outDir, 'frames');
-fs.rmSync(framesDir, { recursive: true, force: true });
-fs.mkdirSync(framesDir, { recursive: true });
+const data = JSON.parse(DATA_JSON);
 
-const avatar = (c, t) => `<div style="width:36px;height:36px;border-radius:6px;background:${c};display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0;">${t}</div>`;
+const outDir = path.join(__dirname, 'output');
+fs.mkdirSync(outDir, { recursive: true });
 
 (async () => {
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    executablePath: '/usr/bin/google-chrome-stable',
-    args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
-  });
+  const browser = await puppeteer.launch({ headless: 'new' });
   const page = await browser.newPage();
   await page.setViewport({ width: 390, height: 844 });
-  for (let i = 0; i < chat.length; i++) {
-    const isRight = chat[i].side === 'right';
-    const bg = dark ? '#111' : '#ededed';
-    const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style type="text/css">body {
-  font-family: "Noto Sans CJK SC", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
-}</style></head>
-    <body style="margin:0;background:${bg};font-family:-apple-system,sans-serif;">
-    <div style="height:44px;background:${dark?'#1c1c1c':'#ededed'};display:flex;align-items:center;justify-content:center;font-size:17px;border-bottom:1px solid ${dark?'#333':'#d6d6d6'}">${title}</div>
-    <div style="padding:12px;display:flex;flex-direction:column;gap:12px;">
-      ${chat.slice(0, i+1).map(m => { const r = m.side === 'right'; return `<div style="display:flex;gap:8px;align-items:flex-start;justify-content:${r?'flex-end':'flex-start'}">
-        ${r ? '' : avatar('#07c160', leftAvatar)}
-        <div style="padding:10px 14px;border-radius:12px;max-width:65%;font-size:15px;line-height:1.5;background:${r?'#95ec69':(dark?'#2a2a2a':'#fff')};color:${r?'#000':(dark?'#eee':'#000')};word-break:break-word">${m.content}</div>
-        ${r ? avatar('#07c160', rightAvatar) : ''}
-      </div>`; }).join('')}
-    </div></body></html>`;
-    await page.setContent(html);
-    await page.screenshot({ path: path.join(framesDir, `frame_${String(i).padStart(4,'0')}.png`), captureBeyondViewport: false });
+
+  const html = buildHTML(data, PLATFORM, LEFT_NAME, RIGHT_NAME);
+  await page.setContent(html, { waitUntil: 'networkidle0' });
+
+  const frames = data.length;
+  for (let i = 0; i < frames; i++) {
+    const msg = page.locator('.msg').nth(i);
+    await msg.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(outDir, `frame-${String(i).padStart(3, '0')}.png`) });
   }
+
   await browser.close();
-  const outMp4 = path.join(outDir, 'output.mp4');
-  execSync(`ffmpeg -y -framerate ${FPS} -i ${framesDir}/frame_%04d.png -pix_fmt yuv420p -c:v libx264 -preset fast ${outMp4}`, { stdio: 'inherit' });
-  console.log('done: ' + outMp4);
+
+  execSync(
+    `ffmpeg -y -framerate 2 -i ${outDir}/frame-%03d.png -c:v libx264 -pix_fmt yuv420p ${outDir}/output.mp4`,
+    { stdio: 'inherit' }
+  );
+
+  console.log('✅ output.mp4 generated');
 })();
+
+function buildHTML(messages, platform, leftName, rightName) {
+  const rows = messages
+    .map((m) => {
+      const isMe = m.sender === rightName;
+      const side = isMe ? 'right' : 'left';
+      const avatar = isMe ? rightName : leftName;
+      return `
+        <div class="row ${side}">
+          <div class="avatar">${avatar}</div>
+          <div class="bubble">${escapeHtml(m.text)}</div>
+        </div>`;
+    })
+    .join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=390">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    width: 390px;
+    background: #ededed;
+    font-family: "Noto Sans CJK SC", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
+  }
+  .row {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px;
+    gap: 8px;
+  }
+  .row.left  { flex-direction: row; }
+  .row.right { flex-direction: row-reverse; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 6px;
+    background: #bbb; color: #fff; display: flex;
+    align-items: center; justify-content: center; font-size: 14px;
+    flex-shrink: 0;
+  }
+  .bubble {
+    max-width: 240px; padding: 10px 12px; border-radius: 8px;
+    background: #fff; font-size: 15px; line-height: 1.5;
+  }
+  .row.right .bubble { background: #95ec69; }
+</style>
+</head>
+<body>${rows}</body>
+</html>`;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
