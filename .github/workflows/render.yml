@@ -1,0 +1,52 @@
+name: Render HyperFrames Video
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      fps:
+        description: "帧率"
+        default: "30"
+      quality:
+        description: "画质 low / medium / high"
+        default: "medium"
+
+jobs:
+  render:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install HyperFrames
+        run: npm install -g hyperframes
+
+      - name: Ensure Chrome
+        run: npx hyperframes browser ensure
+
+      - name: Health check
+        run: npx hyperframes doctor
+
+      - name: Render video
+        run: |
+          FPS=${{ github.event.inputs.fps || '30' }}
+          QUALITY=${{ github.event.inputs.quality || 'medium' }}
+          npx hyperframes render --fps "$FPS" --quality "$QUALITY"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-video
+          path: output/video.mp4
+          if-no-files-found: error
