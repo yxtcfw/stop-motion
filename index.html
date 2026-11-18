@@ -92,12 +92,26 @@
   </style>
 </head>
 <body>
-  <div id="stage" data-composition-id="chat" data-start="0">
+  <div
+    id="stage"
+    data-composition-id="chat"
+    data-start="0"
+    data-duration="10"
+    data-width="390"
+    data-height="844"
+  >
     <div id="messages"></div>
   </div>
 
   <script id="chat-data" type="application/json">
-    []
+    [
+      { "side": "left", "content": "二十九块两百G的流量卡，插进去怎么显示无服务，这玩意儿是不是坏的？" },
+      { "side": "right", "content": "停。你这是新手标准翻车姿势。流量卡不是普通SIM卡，插进去就能用？你想多了。" },
+      { "side": "left", "content": "那怎么弄？客服说激活就行了啊。" },
+      { "side": "right", "content": "激活不等于插卡。先扫码实名认证，再按卡套上的说明绑定套餐，最后才插卡。顺序反了，系统就认为你在乱搞。" },
+      { "side": "left", "content": "我现在补激活还来得及吗？" },
+      { "side": "right", "content": "来得及。把卡拔出来，按客服发的链接重新走一遍激活流程，激活完成后再插卡，重启手机就行。" }
+    ]
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
