@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "historyId": "73c6e076-0258-4e13-a3f8-a5dfd0a995f0",
+  "currentRevision": null,
+  "pendingChanges": false,
+  "files": {
+    "AGENTS.md": {
+      "hash": "729e31835a21c7b42ee006e2aacc63016abc05d26883f871ad3bf206943f2cfb",
+      "content": "/data/data/com.termux/files/home/.cache/hyperframes/history/73c6e076-0258-4e13-a3f8-a5dfd0a995f0/blobs/72/729e31835a21c7b42ee006e2aacc63016abc05d26883f871ad3bf206943f2cfb"
+    },
+    "CLAUDE.md": {
+      "hash": "729e31835a21c7b42ee006e2aacc63016abc05d26883f871ad3bf206943f2cfb",
+      "content": "/data/data/com.termux/files/home/.cache/hyperframes/history/73c6e076-0258-4e13-a3f8-a5dfd0a995f0/blobs/72/729e31835a21c7b42ee006e2aacc63016abc05d26883f871ad3bf206943f2cfb"
+    },
+    "hyperframes.json": {
+      "hash": "53dbce1e19aa713cbb12ee0bc4d206143b45ab15e6ffbfcaa8f69572d4d24d50",
+      "content": "/data/data/com.termux/files/home/.cache/hyperframes/history/73c6e076-0258-4e13-a3f8-a5dfd0a995f0/blobs/53/53dbce1e19aa713cbb12ee0bc4d206143b45ab15e6ffbfcaa8f69572d4d24d50"
+    },
+    "index.html": {
+      "hash": "bb26a8f483c4b8ed34f95e1a3fd8bd97e06440351dcb1c24c71d2abdbb1a1d15",
+      "content": "/data/data/com.termux/files/home/.cache/hyperframes/history/73c6e076-0258-4e13-a3f8-a5dfd0a995f0/blobs/bb/bb26a8f483c4b8ed34f95e1a3fd8bd97e06440351dcb1c24c71d2abdbb1a1d15"
+    },
+    "meta.json": {
+      "hash": "7238b162eb2ea5f1c50edd780c2b8dbfa7c64d8b4f8f360251a6b10d285eab18",
+      "content": "/data/data/com.termux/files/home/.cache/hyperframes/history/73c6e076-0258-4e13-a3f8-a5dfd0a995f0/blobs/72/7238b162eb2ea5f1c50edd780c2b8dbfa7c64d8b4f8f360251a6b10d285eab18"
+    },
+    "package.json": {
+      "hash": "49198496ecc132a2f39590a5179ff52308410e66188081cb06c1f9f7c97952de",
+      "content": "/data/data/com.termux/files/home/.cache/hyperframes/history/73c6e076-0258-4e13-a3f8-a5dfd0a995f0/blobs/49/49198496ecc132a2f39590a5179ff52308410e66188081cb06c1f9f7c97952de"
+    }
+  },
+  "revisions": {},
+  "checks": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  },
+  "snapshots": {
+    "latest": null,
+    "revisions": {},
+    "unversioned": []
+  }
+}
