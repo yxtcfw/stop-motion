@@ -1,0 +1,12 @@
+{
+  "name": "stop‑motion",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node scripts/render.js"
+  },
+  "dependencies": {
+    "puppeteer": "^24.0.0"
+  }
+}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=375, initial-scale=1">
+<title>WeChat Render</title>
+<style>
+body { margin: 0; background: #ededed; }
+.phone {
+  width: 375px;
+  min-height: 666px;
+  background: #ededed;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.phone.dark { background: #111; }
+.nav {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #ededed;
+  border-bottom: 1px solid #d6d6d6;
+}
+.dark .nav { background: #111; border-bottom-color: #222; }
+.nav-title { flex: 1; text-align: center; font-size: 17px; font-weight: 600; }
+.chat { padding: 12px 14px; display: flex; flex-direction: column; gap: 14px; }
+.dark .chat { background: #111; }
+.msg { display: flex; gap: 10px; align-items: flex-start; }
+.msg.right { flex-direction: row-reverse; }
+.avatar {
+  width: 40px; height: 40px; border-radius: 6px;
+  background: #ccc; display: flex; align-items: center;
+  justify-content: center; color: #fff; font-size: 16px;
+  flex-shrink: 0;
+}
+.bubble {
+  max-width: 240px; padding: 10px 14px; border-radius: 6px;
+  font-size: 15px; line-height: 1.5; word-break: break-word;
+}
+.left .bubble { background: #fff; color: #000; }
+.dark .left .bubble { background: #2b2b2b; color: #e0e0e0; }
+.right .bubble { background: #95ec69; color: #000; }
+.dark .right .bubble { background: #2b5c2b; color: #e0e0e0; }
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <div class="nav">
+    <div class="nav-title" id="title">微信</div>
+  </div>
+  <div class="chat" id="chat"></div>
+</div>
+<script>
+window.__RENDER_DATA__ = null;
+</script>
+</body>
+</html>

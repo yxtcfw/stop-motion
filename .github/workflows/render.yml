@@ -1,0 +1,58 @@
+name: WeChat Render
+
+on:
+  workflow_dispatch:
+    inputs:
+      json:
+        description: "Base64 编码的对话 JSON"
+        required: true
+        type: string
+      dark:
+        description: "深色模式 true/false"
+        required: false
+        type: string
+        default: "false"
+      title:
+        description: "聊天标题"
+        required: false
+        type: string
+        default: "微信"
+      left_avatar:
+        description: "左侧头像文字"
+        required: false
+        type: string
+        default: "A"
+      right_avatar:
+        description: "右侧头像文字"
+        required: false
+        type: string
+        default: "我"
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Render video
+        env:
+          INPUT_JSON: ${{ inputs.json }}
+          DARK: ${{ inputs.dark }}
+          TITLE: ${{ inputs.title }}
+          LEFT_AVATAR: ${{ inputs.left_avatar }}
+          RIGHT_AVATAR: ${{ inputs.right_avatar }}
+        run: npm run render
+
+      - name: Upload video
+        uses: actions/upload-artifact@v4
+        with:
+          name: wechat-video
+          path: output/output.mp4
+          retention-days: 1
