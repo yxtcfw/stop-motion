@@ -43,6 +43,6 @@ const avatar = (c, t) => `<div style="width:36px;height:36px;border-radius:6px;b
   }
   await browser.close();
   const outMp4 = path.join(outDir, 'output.mp4');
-  execSync(`ffmpeg -y -framerate ${FPS} -i ${framesDir}frame_%04d.png -pix_fmt yuv420p -c:v libx264 -preset fast ${outMp4}`, { stdio: 'inherit' });
+  execSync(`ffmpeg -y -framerate ${FPS} -i ${framesDir}/frame_%04d.png -pix_fmt yuv420p -c:v libx264 -preset fast ${outMp4}`, { stdio: 'inherit' });
   console.log('done: ' + outMp4);
 })();
