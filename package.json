@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "render": "node scripts/render.js"
+    "render": "node scripts/render.cjs"
   },
   "dependencies": {
     "puppeteer": "^24.0.0"
