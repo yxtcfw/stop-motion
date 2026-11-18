@@ -28,7 +28,9 @@ const avatar = (c, t) => `<div style="width:36px;height:36px;border-radius:6px;b
   for (let i = 0; i < chat.length; i++) {
     const isRight = chat[i].side === 'right';
     const bg = dark ? '#111' : '#ededed';
-    const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+    const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style type="text/css">body {
+  font-family: "Noto Sans CJK SC", "WenQuanYi Micro Hei", "Microsoft YaHei", sans-serif;
+}</style></head>
     <body style="margin:0;background:${bg};font-family:-apple-system,sans-serif;">
     <div style="height:44px;background:${dark?'#1c1c1c':'#ededed'};display:flex;align-items:center;justify-content:center;font-size:17px;border-bottom:1px solid ${dark?'#333':'#d6d6d6'}">${title}</div>
     <div style="padding:12px;display:flex;flex-direction:column;gap:12px;">
