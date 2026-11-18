@@ -20,8 +20,7 @@ const avatar = (c, t) => `<div style="width:36px;height:36px;border-radius:6px;b
 (async () => {
   const browser = await puppeteer.launch({
     headless: 'new',
-    executablePath: '/usr/bin/google-chrome-stable',
-    args: ['--no-sandbox', '--disable-gpu']
+    args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage']
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 390, height: 844 });
