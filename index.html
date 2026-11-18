@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stop Motion 视频生成器</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  label { display: block; margin-top: 1rem; font-weight: bold; }
+  input, textarea, select { width: 100%; padding: .5rem; margin-top: .3rem; font-size: 14px; }
+  textarea { height: 180px; font-family: monospace; }
+  button { margin-top: 1rem; padding: .6rem 1.5rem; font-size: 16px; cursor: pointer; }
+  #status { margin-top: 1rem; padding: .8rem; border-radius: 6px; background: #f0f0f0; white-space: pre-wrap; }
+  .artifact { border: 1px solid #ddd; padding: .8rem; margin-top: .5rem; border-radius: 6px; }
+  .artifact a { color: #0969da; }
+  .success { background: #dafbe1; }
+  .fail   { background: #ffebe9; }
+</style>
+</head>
+<body>
+<h1>🎬 微信对话视频生成器</h1>
+
+<label>GitHub Token（需 repo 权限）
+  <input type="password" id="token" placeholder="ghp_xxx 或 github_pat_xxx">
+</label>
+
+<label>平台
+  <select id="platform"><option>微信</option><option>QQ</option><option>钉钉</option></select>
+</label>
+
+<label>左侧名字 <input id="leftName" value="A"></label>
+<label>右侧名字 <input id="rightName" value="我"></label>
+
+<label>data.json 内容（JSON 数组）
+<textarea id="dataJson">[
+  {"sender":"A","text":"你好"},
+  {"sender":"我","text":"嗨，在呢"}
+]</textarea>
+</label>
+
+<button id="runBtn">🚀 触发生成</button>
+<div id="status"></div>
+
+<script>
+const REPO = 'yxtcfw/stop-motion';
+const WF   = 'render.yml';
+const BASE = `https://api.github.com/repos/${REPO}`;
+
+function log(msg) { document.getElementById('status').textContent += msg + '\n'; }
+
+async function api(path, opts = {}) {
+  const token = document.getElementById('token').value.trim();
+  const headers = {
+    'Authorization': `token ${token}`,
+    'Accept': 'application/vnd.github.v3+json'
+  };
+  if (opts.body) {
+    headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(opts.body);
+  }
+  const r = await fetch(`${BASE}${path}`, { ...opts, headers });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}\n${await r.text()}`);
+  return r.json();
+}
+
+// 自动回填 / 保存 token（仅存在本地浏览器）
+(function initToken() {
+  const saved = localStorage.getItem('gh_token');
+  if (saved) document.getElementById('token').value = saved;
+})();
+
+document.getElementById('runBtn').onclick = async () => {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('status').textContent = '';
+  try {
+    const body = {
+      ref: 'main',
+      inputs: {
+        data_json:  document.getElementById('dataJson').value.trim(),
+        platform:   document.getElementById('platform').value,
+        left_name:  document.getElementById('leftName').value.trim(),
+        right_name: document.getElementById('rightName').value.trim(),
+      }
+    };
+
+    log('正在触发 workflow_dispatch ...');
+    await api(`/actions/workflows/${WF}/dispatches`, { method: 'POST', body });
+    localStorage.setItem('gh_token', document.getElementById('token').value.trim());
+    log('✅ 已触发，等待 Actions 启动 ...');
+
+    let runId = null;
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 5000));
+      const runs = await api('/actions/runs?per_page=5');
+      const latest = runs.workflow_runs?.[0];
+      if (!latest) continue;
+      runId = latest.id;
+      const status = latest.status;
+      const conclusion = latest.conclusion || '—';
+      log(`Run #${latest.run_number}  status=${status}  conclusion=${conclusion}`);
+      if (status === 'completed') break;
+    }
+
+    if (!runId) { log('❌ 未找到运行的 workflow'); return; }
+
+    const arts = await api(`/actions/runs/${runId}/artifacts`);
+    if (!arts.artifacts?.length) { log('⚠️ 本次 run 没有 artifact（可能失败了）'); return; }
+
+    arts.artifacts.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'artifact ' + (a.expired ? 'fail' : 'success');
+      div.innerHTML =
+        `<b>${a.name}</b> (${(a.size_in_bytes / 1024 / 1024).toFixed(1)} MB)<br>` +
+        `created: ${new Date(a.created_at).toLocaleString()}<br>` +
+        `<a href="${a.archive_download_url}" target="_blank">⬇ 下载</a>`;
+      document.getElementById('status').appendChild(div);
+    });
+  } catch (e) {
+    log('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
