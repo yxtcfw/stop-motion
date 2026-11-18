@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO="yxtcfw/stop‑motion"
+REPO="yxtcfw/stop-motion"
 JSON_FILE="${1:-chat.json}"
 DARK="${2:-false}"
 TITLE="${3:-微信}"
