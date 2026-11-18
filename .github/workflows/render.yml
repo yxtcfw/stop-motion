@@ -42,9 +42,14 @@ jobs:
         run: |
           FPS=${{ github.event.inputs.fps || '30' }}
           QUALITY=${{ github.event.inputs.quality || 'standard' }}
-          npx hyperframes render --fps "$FPS" --quality "$QUALITY"
+
+          npx hyperframes render \
+            --fps "$FPS" \
+            --quality "$QUALITY" \
+            --output output/video.mp4
 
       - name: Upload artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: output-video
