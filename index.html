@@ -1,61 +1,144 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1920, height=1080" />
-    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
-    <style>
-      /* Placeholders: replace all three with the film's own palette and display face. */
-      :root {
-        --ground: #000;
-        --ink: #ffffff;
-        --font-display: sans-serif;
-      }
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        margin: 0;
-        width: 1920px;
-        height: 1080px;
-        overflow: hidden;
-        background: var(--ground);
-      }
-      #root {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: var(--font-display);
-      }
-      #title {
-        color: var(--ink);
-        font-size: 72px;
-        font-weight: 600;
-        letter-spacing: -0.03em;
-      }
-    </style>
-  </head>
-  <body>
-    <div
-      id="root"
-      data-composition-id="main"
-      data-start="0"
-      data-duration="10"
-      data-width="1920"
-      data-height="1080"
-    >
-      <h1 id="title" class="clip" data-start="0" data-duration="10" data-track-index="0">Title</h1>
-    </div>
-    <script>
-      const tl = gsap.timeline({ paused: true });
-      // Example: tl.fromTo("#title", { opacity: 0, filter: "blur(8px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.18, ease: "power4.out" }, 0);
-      window.__timelines["main"] = tl;
-      tl.seek(0);
-    </script>
-  </body>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat Video</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+
+    #stage {
+      width: 390px;
+      height: 844px;
+      background: #f2f2f7;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #messages {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .row {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .row.left {
+      justify-content: flex-start;
+    }
+
+    .row.right {
+      justify-content: flex-end;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #e5e5ea;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .row.right .avatar {
+      background: #007aff;
+      color: #fff;
+      order: 2;
+    }
+
+    .bubble {
+      max-width: 240px;
+      padding: 10px 14px;
+      border-radius: 18px;
+      font-size: 15px;
+      line-height: 1.5;
+      word-break: break-word;
+      opacity: 0;
+    }
+
+    .row.left .bubble {
+      background: #fff;
+      color: #111;
+      border-bottom-left-radius: 6px;
+    }
+
+    .row.right .bubble {
+      background: #007aff;
+      color: #fff;
+      border-bottom-right-radius: 6px;
+      order: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage" data-composition-id="chat" data-start="0">
+    <div id="messages"></div>
+  </div>
+
+  <script id="chat-data" type="application/json">
+    []
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script>
+    const data = JSON.parse(
+      document.getElementById("chat-data").textContent
+    );
+
+    const container = document.getElementById("messages");
+
+    data.forEach((m) => {
+      const row = document.createElement("div");
+      row.className = "row " + (m.side === "right" ? "right" : "left");
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = m.side === "right" ? "我" : "客服";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = m.content;
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      container.appendChild(row);
+    });
+
+    const tl = gsap.timeline({ paused: true });
+    const bubbles = document.querySelectorAll(".bubble");
+
+    bubbles.forEach((b, i) => {
+      tl.fromTo(
+        b,
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.35 },
+        i * 1.2
+      );
+    });
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.chat = tl;
+  </script>
+</body>
 </html>

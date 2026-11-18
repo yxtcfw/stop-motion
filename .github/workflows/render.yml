@@ -9,8 +9,8 @@ on:
         description: "帧率"
         default: "30"
       quality:
-        description: "画质 low / medium / high"
-        default: "medium"
+        description: "画质 draft / standard / high"
+        default: "standard"
 
 jobs:
   render:
@@ -41,7 +41,7 @@ jobs:
       - name: Render video
         run: |
           FPS=${{ github.event.inputs.fps || '30' }}
-          QUALITY=${{ github.event.inputs.quality || 'medium' }}
+          QUALITY=${{ github.event.inputs.quality || 'standard' }}
           npx hyperframes render --fps "$FPS" --quality "$QUALITY"
 
       - name: Upload artifact
