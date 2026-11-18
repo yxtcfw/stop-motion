@@ -7,22 +7,25 @@
 <style>
   * { box-sizing: border-box; }
   body { font-family: sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; }
   label { display: block; margin-top: 1rem; font-weight: bold; }
   input, textarea, select { width: 100%; padding: .5rem; margin-top: .3rem; font-size: 14px; }
   textarea { height: 180px; font-family: monospace; }
   button { margin-top: 1rem; padding: .6rem 1.5rem; font-size: 16px; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: not-allowed; }
   #status { margin-top: 1rem; padding: .8rem; border-radius: 6px; background: #f0f0f0; white-space: pre-wrap; }
   .artifact { border: 1px solid #ddd; padding: .8rem; margin-top: .5rem; border-radius: 6px; }
-  .artifact a { color: #0969da; }
+  .artifact a, .artifact button { color: #0969da; cursor: pointer; background: none; border: none; padding: 0; font-size: 14px; text-decoration: underline; }
   .success { background: #dafbe1; }
   .fail   { background: #ffebe9; }
+  .muted { color: #888; font-size: 12px; }
 </style>
 </head>
 <body>
 <h1>🎬 微信对话视频生成器</h1>
 
-<label>GitHub Token（需 repo 权限）
-  <input type="password" id="token" placeholder="ghp_xxx 或 github_pat_xxx">
+<label>GitHub Token（需 Actions read/write 权限）
+  <input type="password" id="token" placeholder="github_pat_xxx 或 ghp_xxx">
 </label>
 
 <label>平台
@@ -44,11 +47,17 @@
 
 <script>
 const REPO = 'yxtcfw/stop-motion';
-const WF   = 'render.yml';
+const WF   = 'render.yml';            // 文件名（dispatch 接口按文件名寻址）
+const WF_NAME = 'WeChat Render';      // workflow 的 name 字段，用于从 run 列表里精确筛选
 const BASE = `https://api.github.com/repos/${REPO}`;
 
-function log(msg) { document.getElementById('status').textContent += msg + '\n'; }
+function log(msg) {
+  const s = document.getElementById('status');
+  s.appendChild(document.createTextNode(msg + '\n'));
+  s.scrollTop = s.scrollHeight;
+}
 
+// 统一请求封装：204/空 body 直接返回 null，不再误调 r.json()
 async function api(path, opts = {}) {
   const token = document.getElementById('token').value.trim();
   const headers = {
@@ -60,25 +69,81 @@ async function api(path, opts = {}) {
     opts.body = JSON.stringify(opts.body);
   }
   const r = await fetch(`${BASE}${path}`, { ...opts, headers });
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}\n${await r.text()}`);
-  return r.json();
+
+  if (r.status === 204) return null;
+
+  const text = await r.text();
+  if (!r.ok) {
+    let msg = `${r.status} ${r.statusText}`;
+    try {
+      const err = JSON.parse(text);
+      if (err.message) msg += '\n' + err.message;
+    } catch (_) {
+      if (text.trim()) msg += '\n' + text.slice(0, 300);
+    }
+    throw new Error(msg);
+  }
+  if (!text.trim()) return null;
+  return JSON.parse(text);
 }
 
-// 自动回填 / 保存 token（仅存在本地浏览器）
+// token 仅存本地浏览器
 (function initToken() {
   const saved = localStorage.getItem('gh_token');
   if (saved) document.getElementById('token').value = saved;
 })();
 
+// artifact 是受权限保护的 zip，必须带 Authorization 头下载，
+// 用 <a href> 直接点会 403。这里 fetch 成 blob 再触发浏览器下载。
+async function downloadArtifact(archiveUrl, name) {
+  const token = document.getElementById('token').value.trim();
+  const r = await fetch(archiveUrl, {
+    headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+  });
+  if (!r.ok) { log('⬇ 下载失败 ' + r.status + ' ' + r.statusText); return; }
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (name || 'wechat-video') + '.zip';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 document.getElementById('runBtn').onclick = async () => {
   const btn = document.getElementById('runBtn');
   btn.disabled = true;
   document.getElementById('status').textContent = '';
+
+  const token = document.getElementById('token').value.trim();
+  if (!token) { log('❌ 请先填写 GitHub Token'); btn.disabled = false; return; }
+
+  // 先校验 data.json 是合法 JSON 数组，避免把坏数据 dispatch 过去
+  const raw = document.getElementById('dataJson').value.trim();
   try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || arr.length === 0) throw new Error('data 需为非空数组');
+  } catch (e) {
+    log('❌ data.json 格式错误：' + e.message);
+    btn.disabled = false;
+    return;
+  }
+
+  try {
+    // 记录 dispatch 之前已有的最大 run_number 作为基线，
+    // 之后只跟踪 run_number 大于基线、且属于本 workflow 的新 run，
+    // 避免把历史/其他触发方式的旧 run 误当成本次结果。
+    let baseNum = 0;
+    try {
+      const before = await api('/actions/runs?per_page=1');
+      const rb = before.workflow_runs?.find(x => x.name === WF_NAME);
+      baseNum = rb ? rb.run_number : 0;
+    } catch (_) { baseNum = 0; }
+
     const body = {
       ref: 'main',
       inputs: {
-        data_json:  document.getElementById('dataJson').value.trim(),
+        data_json:  raw,
         platform:   document.getElementById('platform').value,
         left_name:  document.getElementById('leftName').value.trim(),
         right_name: document.getElementById('rightName').value.trim(),
@@ -87,36 +152,53 @@ document.getElementById('runBtn').onclick = async () => {
 
     log('正在触发 workflow_dispatch ...');
     await api(`/actions/workflows/${WF}/dispatches`, { method: 'POST', body });
-    localStorage.setItem('gh_token', document.getElementById('token').value.trim());
+    localStorage.setItem('gh_token', token);
     log('✅ 已触发，等待 Actions 启动 ...');
 
-    let runId = null;
-    for (let i = 0; i < 60; i++) {
+    // 轮询：定位本次产生的新 run
+    let run = null;
+    for (let i = 0; i < 80; i++) {
       await new Promise(r => setTimeout(r, 5000));
-      const runs = await api('/actions/runs?per_page=5');
-      const latest = runs.workflow_runs?.[0];
-      if (!latest) continue;
-      runId = latest.id;
-      const status = latest.status;
-      const conclusion = latest.conclusion || '—';
-      log(`Run #${latest.run_number}  status=${status}  conclusion=${conclusion}`);
-      if (status === 'completed') break;
+      const runs = await api('/actions/runs?per_page=10');
+      // 只看属于本 workflow 且比基线新的 run，取最新一条
+      const mine = (runs.workflow_runs || [])
+        .filter(x => x.name === WF_NAME && x.run_number > baseNum)
+        .sort((a, b) => b.run_number - a.run_number);
+      if (!mine.length) { log('…等待 workflow 启动'); continue; }
+
+      run = mine[0];
+      log(`Run #${run.run_number}  status=${run.status}  conclusion=${run.conclusion || '—'}`);
+      if (run.status === 'completed') break;
     }
 
-    if (!runId) { log('❌ 未找到运行的 workflow'); return; }
+    if (!run) { log('❌ 超时仍未检测到本次运行，请到 Actions 页面查看'); return; }
 
-    const arts = await api(`/actions/runs/${runId}/artifacts`);
-    if (!arts.artifacts?.length) { log('⚠️ 本次 run 没有 artifact（可能失败了）'); return; }
+    if (run.conclusion && run.conclusion !== 'success') {
+      log('❌ 本次 run 结果为 ' + run.conclusion + '，查看日志：');
+      const link = document.createElement('a');
+      link.href = run.html_url; link.target = '_blank';
+      link.textContent = run.html_url;
+      document.getElementById('status').appendChild(link);
+      document.getElementById('status').appendChild(document.createTextNode('\n'));
+      return;
+    }
+
+    const arts = await api(`/actions/runs/${run.id}/artifacts`);
+    if (!arts.artifacts?.length) { log('⚠️ 本次 run 没有 artifact（渲染步骤可能未产出文件）'); return; }
 
     arts.artifacts.forEach(a => {
       const div = document.createElement('div');
       div.className = 'artifact ' + (a.expired ? 'fail' : 'success');
       div.innerHTML =
-        `<b>${a.name}</b> (${(a.size_in_bytes / 1024 / 1024).toFixed(1)} MB)<br>` +
-        `created: ${new Date(a.created_at).toLocaleString()}<br>` +
-        `<a href="${a.archive_download_url}" target="_blank">⬇ 下载</a>`;
+        `<b>${a.name}</b> (${(a.size_in_bytes / 1024 / 1024).toFixed(2)} MB)<br>` +
+        `<span class="muted">created: ${new Date(a.created_at).toLocaleString()}</span><br>`;
+      const dl = document.createElement('button');
+      dl.textContent = '⬇ 下载 artifact(zip)';
+      dl.onclick = () => downloadArtifact(a.archive_download_url, a.name);
+      div.appendChild(dl);
       document.getElementById('status').appendChild(div);
     });
+    log('✅ 完成，点击上方按钮下载。zip 解压即为 output.mp4');
   } catch (e) {
     log('❌ ' + e.message);
   } finally {
