@@ -17,7 +17,8 @@ try {
 }
 if (!Array.isArray(data) || data.length === 0) throw new Error('data.json 必须是非空数组');
 
-const outDir = path.join(__dirname, 'output');
+const outDir = path.join(__dirname, '..', 'output');
+
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
