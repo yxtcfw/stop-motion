@@ -11,6 +11,9 @@
   label { display: block; margin-top: 1rem; font-weight: bold; }
   input, textarea, select { width: 100%; padding: .5rem; margin-top: .3rem; font-size: 14px; }
   textarea { height: 180px; font-family: monospace; }
+  .row-inline { display: flex; align-items: center; gap: .5rem; margin-top: .6rem; }
+  .row-inline input { width: auto; }
+  .hint { font-weight: normal; color: #888; font-size: 12px; }
   button { margin-top: 1rem; padding: .6rem 1.5rem; font-size: 16px; cursor: pointer; }
   button:disabled { opacity: .6; cursor: not-allowed; }
   #status { margin-top: 1rem; padding: .8rem; border-radius: 6px; background: #f0f0f0; white-space: pre-wrap; }
@@ -28,18 +31,24 @@
   <input type="password" id="token" placeholder="github_pat_xxx 或 ghp_xxx">
 </label>
 
-<label>平台
+<label>平台 / 顶部标题
   <select id="platform"><option>微信</option><option>QQ</option><option>钉钉</option></select>
 </label>
 
-<label>左侧名字 <input id="leftName" value="A"></label>
-<label>右侧名字 <input id="rightName" value="我"></label>
+<label>左侧头像文字 <input id="leftName" value="A"></label>
+<label>右侧头像文字 <input id="rightName" value="我"></label>
 
-<label>data.json 内容（JSON 数组）
+<div class="row-inline">
+  <input type="checkbox" id="dark" style="width:auto">
+  <label for="dark" style="margin-top:0;font-weight:bold">深色模式</label>
+</div>
+
+<label>对话数据（JSON 数组，元素为 {"side":"left|right","content":"文本"}）
 <textarea id="dataJson">[
-  {"sender":"A","text":"你好"},
-  {"sender":"我","text":"嗨，在呢"}
+  {"side":"left","content":"二十九块两百G的流量卡，插进去怎么显示无服务，这玩意儿是不是坏的？"},
+  {"side":"right","content":"停。你这是新手标准翻车姿势。流量卡不是普通SIM卡，插进去就能用？你想多了。"}
 ]</textarea>
+<span class="hint">side=left 靠左、right 靠右（即"我"）；气泡文字取 content</span>
 </label>
 
 <button id="runBtn">🚀 触发生成</button>
@@ -55,6 +64,11 @@ function log(msg) {
   const s = document.getElementById('status');
   s.appendChild(document.createTextNode(msg + '\n'));
   s.scrollTop = s.scrollHeight;
+}
+
+// 统一 UTF-8 base64（中文安全）；与 render.cjs / render.sh 的约定一致
+function toB64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
 }
 
 // 统一请求封装：204/空 body 直接返回 null，不再误调 r.json()
@@ -118,35 +132,43 @@ document.getElementById('runBtn').onclick = async () => {
   const token = document.getElementById('token').value.trim();
   if (!token) { log('❌ 请先填写 GitHub Token'); btn.disabled = false; return; }
 
-  // 先校验 data.json 是合法 JSON 数组，避免把坏数据 dispatch 过去
+  // 先校验 data 是合法 JSON 非空数组（{side,content}），避免把坏数据 dispatch 过去
   const raw = document.getElementById('dataJson').value.trim();
   try {
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr) || arr.length === 0) throw new Error('data 需为非空数组');
+    for (const m of arr) {
+      if (m.side === undefined || m.content === undefined) {
+        throw new Error('每条需含 side 与 content 字段');
+      }
+    }
   } catch (e) {
-    log('❌ data.json 格式错误：' + e.message);
+    log('❌ 数据格式错误：' + e.message);
     btn.disabled = false;
     return;
   }
 
   try {
-    // 记录 dispatch 之前已有的最大 run_number 作为基线，
+    // 记录 dispatch 之前本 workflow 已有的最大 run_number 作为基线，
     // 之后只跟踪 run_number 大于基线、且属于本 workflow 的新 run，
-    // 避免把历史/其他触发方式的旧 run 误当成本次结果。
+    // 避免把历史 / 其他触发方式的旧 run 误当成本次结果。
     let baseNum = 0;
     try {
-      const before = await api('/actions/runs?per_page=1');
-      const rb = before.workflow_runs?.find(x => x.name === WF_NAME);
+      const before = await api('/actions/runs?per_page=10');
+      const rb = (before.workflow_runs || [])
+        .filter(x => x.name === WF_NAME)
+        .sort((a, b) => b.run_number - a.run_number)[0];
       baseNum = rb ? rb.run_number : 0;
     } catch (_) { baseNum = 0; }
 
     const body = {
       ref: 'main',
       inputs: {
-        data_json:  raw,
+        data_json:  toB64(raw),                    // ← 约定：base64 编码
         platform:   document.getElementById('platform').value,
         left_name:  document.getElementById('leftName').value.trim(),
         right_name: document.getElementById('rightName').value.trim(),
+        dark:       document.getElementById('dark').checked ? 'true' : 'false',
       }
     };
 
@@ -160,7 +182,6 @@ document.getElementById('runBtn').onclick = async () => {
     for (let i = 0; i < 80; i++) {
       await new Promise(r => setTimeout(r, 5000));
       const runs = await api('/actions/runs?per_page=10');
-      // 只看属于本 workflow 且比基线新的 run，取最新一条
       const mine = (runs.workflow_runs || [])
         .filter(x => x.name === WF_NAME && x.run_number > baseNum)
         .sort((a, b) => b.run_number - a.run_number);

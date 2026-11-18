@@ -4,24 +4,32 @@ on:
   workflow_dispatch:
     inputs:
       data_json:
-        description: "data.json 内容（JSON 字符串）"
+        description: "data.json 内容（base64 编码的 UTF-8 JSON 字符串）"
         required: true
         type: string
       platform:
-        description: "平台：微信/QQ/钉钉"
+        description: "顶部标题 / 平台：微信/QQ/钉钉"
         required: false
         default: "微信"
         type: string
       left_name:
-        description: "左侧头像名"
+        description: "左侧头像文字"
         required: false
         default: "A"
         type: string
       right_name:
-        description: "右侧头像名"
+        description: "右侧头像文字"
         required: false
         default: "我"
         type: string
+      dark:
+        description: "深色模式"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
   push:
     branches: [main]
 
@@ -48,15 +56,16 @@ jobs:
           node-version: 20
 
       - name: Install Puppeteer
-        run: npm install puppeteer
+        run: npm install
 
       - name: Render video
         env:
-          DATA_JSON: ${{ github.event.inputs.data_json || '' }}
-          PLATFORM: ${{ github.event.inputs.platform || '' }}
-          LEFT_NAME: ${{ github.event.inputs.left_name || '' }}
-          RIGHT_NAME: ${{ github.event.inputs.right_name || '' }}
-        run: node render.cjs
+          DATA_JSON: ${{ github.event.inputs.data_json }}
+          PLATFORM: ${{ github.event.inputs.platform }}
+          LEFT_NAME: ${{ github.event.inputs.left_name }}
+          RIGHT_NAME: ${{ github.event.inputs.right_name }}
+          DARK: ${{ github.event.inputs.dark }}
+        run: node scripts/render.cjs
 
       - name: Upload video
         uses: actions/upload-artifact@v4
