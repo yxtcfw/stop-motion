@@ -8,7 +8,6 @@ const PLATFORM   = process.env.PLATFORM   || '微信';
 const LEFT_NAME  = process.env.LEFT_NAME  || 'A';
 const RIGHT_NAME = process.env.RIGHT_NAME || '我';
 
-// 兼容 base64 编码 / 原始 JSON 两种写入方式
 const raw = String(DATA_JSON).trim();
 let data;
 try {
@@ -39,8 +38,10 @@ fs.mkdirSync(outDir, { recursive: true });
   await page.setContent(html, { waitUntil: 'networkidle0' });
 
   const frames = data.length;
+  const msgs = await page.$$('.msg');
   for (let i = 0; i < frames; i++) {
-    const msg = page.locator('.msg').nth(i);
+    const msg = msgs[i];
+    if (!msg) throw new Error(`第 ${i} 条消息元素不存在`);
     await msg.scrollIntoViewIfNeeded();
     await page.screenshot({
       path: path.join(outDir, `frame-${String(i).padStart(3, '0')}.png`),
@@ -60,7 +61,7 @@ fs.mkdirSync(outDir, { recursive: true });
 
 function buildHTML(messages, platform, leftName, rightName) {
   const rows = messages
-    .map((m, idx) => {
+    .map((m) => {
       const isMe = m.sender === rightName;
       const side = isMe ? 'right' : 'left';
       const avatar = isMe ? rightName : leftName;
